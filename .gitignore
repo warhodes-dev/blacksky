@@ -1,2 +1,4 @@
 /target
 api.key
+api.id
+session.json

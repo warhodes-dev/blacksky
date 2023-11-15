@@ -140,6 +140,8 @@ dependencies = [
  "atrium-api",
  "atrium-xrpc-client",
  "futures",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 
