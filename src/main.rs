@@ -11,6 +11,8 @@ use serde::ser::Serialize;
 use atrium_api::com::atproto::server::create_session::Input;
 use atrium_api::agent::Session;
 
+use base64::{engine, alphabet, Engine as _};
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let api_id = std::fs::read_to_string("./api.id")?.trim().to_owned();
@@ -18,7 +20,10 @@ async fn main() -> Result<()> {
 
     let agent = authenticate(api_id, api_key).await?;
 
-    println!("{:#?}", agent.get_session().await);
+    let session_json = serde_json::to_string(&agent.get_session().await)?;
+    let session_token = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(session_json);
+
+    println!("Session token: {session_token}");
 
     Ok(())
 }
