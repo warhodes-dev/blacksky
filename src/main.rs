@@ -40,13 +40,13 @@ async fn main() -> Result<()> {
         println!("Feching batch of 10");
         let get_timeline_params = atrium_api::app::bsky::feed::get_timeline::Parameters {
             algorithm: None,
-            cursor: None,
+            cursor: cursor.clone(),
             limit: Some(10),
         };
         let timeline = agent.api.app.bsky.feed.get_timeline(get_timeline_params).await?;
+        cursor = timeline.cursor.clone();
 
         for post in timeline.feed.iter().map(|feed_item| &feed_item.post) {
-            cursor = Some(post.cid.clone());
             match &post.record {
                 atrium_api::records::Record::AppBskyActorProfile(_) => todo!(),
                 atrium_api::records::Record::AppBskyFeedGenerator(_) => todo!(),
@@ -64,7 +64,7 @@ async fn main() -> Result<()> {
             let mut buf = String::new();
             std::io::stdin().read_line(&mut buf)?;
 
-            match buf.as_str() {
+            match buf.as_str().trim() {
                 "debug" => println!("{post:#?}"),
                 "cursor" => println!("{cursor:?}"),
                 _ => (),
@@ -84,11 +84,34 @@ fn print_post(
     }
     println!("@{}\n", post.author.handle);
     println!("{}", record.text);
+    if let Some(embed) = &post.embed {
+        use atrium_api::app::bsky::feed::defs::PostViewEmbedEnum;
+        match embed {
+            PostViewEmbedEnum::AppBskyEmbedImagesView(image) => {
+                for image in &image.images {
+                    println!("\tIMAGE: {}", image.thumb);
+                    if !image.alt.is_empty() {
+                        println!("\t       {}", image.alt);
+                    }
+                }
+            },
+            PostViewEmbedEnum::AppBskyEmbedExternalView(ext) => {
+                let ext = &ext.external;
+                println!("\tEXTERNAL: {}", ext.title);
+                println!("\t          {}", ext.description);
+                println!("\t          {}", ext.thumb.as_deref().unwrap_or(""));
+                println!("\t          {}", ext.uri);
+            },
+            PostViewEmbedEnum::AppBskyEmbedRecordView(_) => todo!(),
+            PostViewEmbedEnum::AppBskyEmbedRecordWithMediaView(_) => todo!(),
+        }
+    }
     println!("Replies: {}\tLikes: {}\tReposts: {}",
         post.like_count.unwrap_or(0),
         post.reply_count.unwrap_or(0),
         post.repost_count.unwrap_or(0),
-    )
+    );
+    println!();
 }
 
 fn get_command() {
@@ -115,7 +138,6 @@ async fn try_restore_session(
     };
 
     eprintln!("Logging in with cached session");
-    eprintln!("Old session: {old_session:#?}");
 
     agent.resume_session(old_session).await?;
 
